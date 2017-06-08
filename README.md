@@ -24,7 +24,7 @@ R script does the modelling.
 
 Python for transforming the fugly data into a format suitable for npsurv in the survival library
 
-Blog at http://bioinformare.blogspot.com/2016/02/survival-analysis-of-hard-disk-drive.html
+Blog at http://bioinformare.blogspot.com
 
 
 [km2]: km_manufacturer_feb2015_rl.png   "KM curves by manufacturer"
