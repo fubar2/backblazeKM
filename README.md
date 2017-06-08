@@ -3,7 +3,10 @@
 Updated June 2017
 
 New data added. Code updated. images stowed here.
-
+Now run a series of time restricted models to allow exploration of 
+newer drives over shorter time spans - all observations are adjusted 
+to represent what would have been known at the end of the particular 
+shorter period
 
 
 Started February 2016
