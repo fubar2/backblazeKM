@@ -8,58 +8,72 @@
 library(survival)
 library(rms)
 
+fixres = function(modkm)
+## reformat and reorder the km model results 
+{
+  oediff = modkm$obs - modkm$exp
+  oesign = sign(oediff)
+  oegood = oesign < 0
+  oechi = (oediff)^2/modkm$exp
+  oesort = oechi*oesign
+  resd = data.frame(modkm$n,'Observed'=modkm$obs,'Expected'=modkm$exp,'chi' = oechi,'sort'=oesort)
+  rownames(resd) = names(modkm$n)
+  sresd = resd[order(resd$sort),]
+  sresd$rank = c(1:nrow(resd))
+  return(sresd)
+}
 
 ggsurv <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
                    cens.col = 'red', lty.est = 1, lty.ci = 2,
                    cens.shape = 3, back.white = T, xlab = 'Time',
                    ylab = 'Survival', main = ''){
- 
+
   library(ggplot2)
   strata <- ifelse(is.null(s$strata) ==T, 1, length(s$strata))
   stopifnot(length(surv.col) == 1 | length(surv.col) == strata)
   stopifnot(length(lty.est) == 1 | length(lty.est) == strata)
- 
+
   ggsurv.s <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
                        cens.col = 'red', lty.est = 1, lty.ci = 2,
                        cens.shape = 3, back.white = F, xlab = 'Time',
                        ylab = 'Survival', main = ''){
- 
+
     dat <- data.frame(time = c(0, s$time),
                       surv = c(1, s$surv),
                       up = c(1, s$upper),
                       low = c(1, s$lower),
                       cens = c(0, s$n.censor))
     dat.cens <- subset(dat, cens != 0)
- 
+
     col <- ifelse(surv.col == 'gg.def', 'black', surv.col)
- 
+
     pl <- ggplot(dat, aes(x = time, y = surv)) +
       xlab(xlab) + ylab(ylab) + ggtitle(main) +
       geom_step(col = col, lty = lty.est)
- 
+
     pl <- if(CI == T | CI == 'def') {
       pl + geom_step(aes(y = up), color = col, lty = lty.ci) +
         geom_step(aes(y = low), color = col, lty = lty.ci)
     } else (pl)
- 
+
     pl <- if(plot.cens == T & length(dat.cens) > 0){
       pl + geom_point(data = dat.cens, aes(y = surv), shape = cens.shape,
                        col = cens.col)
     } else if (plot.cens == T & length(dat.cens) == 0){
       stop ('There are no censored observations')
     } else(pl)
- 
+
     pl <- if(back.white == T) {pl + theme_bw()
     } else (pl)
     pl
   }
- 
+
   ggsurv.m <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
                        cens.col = 'red', lty.est = 1, lty.ci = 2,
                        cens.shape = 3, back.white = T, xlab = 'Time',
                        ylab = 'Survival', main = '') {
     n <- s$strata
- 
+
     ugroups <- unlist(strsplit(names(s$strata), '='))[seq(2, 2*strata, by = 2)]
     getlast = function(x) {
       res=NULL
@@ -77,7 +91,7 @@ ggsurv <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
     ind <- vector('list', strata)
     n.ind <- c(0,n); n.ind <- cumsum(n.ind)
     for(i in 1:strata) ind[[i]] <- (n.ind[i]+1):n.ind[i+1]
- 
+
     for(i in 1:strata){
       gr.df[[i]] <- data.frame(
         time = c(0, s$time[ ind[[i]] ]),
@@ -87,30 +101,30 @@ ggsurv <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
         cens = c(0, s$n.censor[ ind[[i]] ]),
         group = rep(groups[i], n[i] + 1))
     }
- 
+
     dat <- do.call(rbind, gr.df)
     dat.cens <- subset(dat, cens != 0)
- 
+
     pl <- ggplot(dat, aes(x = time, y = surv, group = group)) +
       xlab(xlab) + ylab(ylab) + ggtitle(main) +
       geom_step(aes(col = group, lty = group))
- 
+
     col <- if(length(surv.col == 1)){
       scale_colour_manual(name = gr.name, values = rep(surv.col, strata))
     } else{
       scale_colour_manual(name = gr.name, values = surv.col)
     }
- 
+
     pl <- if(surv.col[1] != 'gg.def'){
       pl + col
     } else {pl + scale_colour_discrete(name = gr.name)}
- 
+
     line <- if(length(lty.est) == 1){
       scale_linetype_manual(name = gr.name, values = rep(lty.est, strata))
     } else {scale_linetype_manual(name = gr.name, values = lty.est)}
- 
+
     pl <- pl + line
- 
+
     pl <- if(CI == T) {
       if(length(surv.col) > 1 && length(lty.est) > 1){
         stop('Either surv.col or lty.est should be of length 1 in order
@@ -121,15 +135,15 @@ ggsurv <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
       } else{pl +  geom_step(aes(y = up, lty = group), col = surv.col) +
                geom_step(aes(y = low,lty = group), col = surv.col)}
     } else {pl}
- 
- 
+
+
     pl <- if(plot.cens == T & length(dat.cens) > 0){
       pl + geom_point(data = dat.cens, aes(y = surv), shape = cens.shape,
                       col = cens.col)
     } else if (plot.cens == T & length(dat.cens) == 0){
       stop ('There are no censored observations')
     } else(pl)
- 
+
     pl <- if(back.white == T) {pl + theme_bw()
     } else (pl)
     pl
@@ -145,17 +159,20 @@ ggsurv <- function(s, CI = 'def', plot.cens = T, surv.col = 'gg.def',
   pl
 }
 
-f = 'drivefail_res.xls'
+dfd = "/data/drivefail"
+setwd(dfd)
 
+#f = 'drivefail_resSept2016.xls'
+f = 'drivefail_resOct2016.xls'
 d = read.delim(f,sep='\t',head=T)
-
-titl = 'KM curves from Backblaze drive data to Q3 2015'
+rundate='Oct2016'
+titl = 'KM curves from Backblaze drive data to Q2 2016'
 tm = table(d$manufact)
 ds = subset(d,tm[d$manufact]>200)
 s = with(ds,Surv(time=obsdays,event=status))
 km.manu = npsurv(s ~ manufact, data=ds)
-ofnpdf = 'km_manufacturer_feb2015_rl.pdf'
-ofnpng = 'km_manufacturer_feb2015_rl.png'
+ofnpdf = paste('km_manufacturer_ST500LM012_HN_fixed_',rundate,'_rl.pdf',sep='')
+ofnpng = paste('km_manufacturer_ST500LM012_HN_fixed_',rundate,'_rl.png',sep='')
 png(ofnpng,height=1000,width=1600)
 ggsurv(km.manu,main = titl)
 dev.off()
@@ -163,16 +180,68 @@ pdf(ofnpdf,height=10,width=20)
 ggsurv(km.manu,main = titl)
 dev.off()
 tmo = table(d$model)
+
 dm = subset(d,tmo[d$model] > 500)
 sm = with(dm,Surv(time=obsdays,event=status))
 km.mod = npsurv(sm ~ model, data=dm)
-ofnpdf = 'km_model_feb2015_rl.pdf'
-ofnpng = 'km_model_feb2015_rl.png'
+ofnpdf = paste('km_model_ST500LM012_HN_fixed_',rundate,'_rl.pdf',sep='')
+ofnpng = paste('km_model_ST500LM012_HN_fixed_',rundate,'_rl.png',sep='')
 png(ofnpng,height=1000,width=1600)
 ggsurv(km.mod,main = titl)
 dev.off()
 pdf(ofnpdf,height=10,width=20)
 ggsurv(km.mod,main = titl)
 dev.off()
-survdiff(sm ~ model, data=dm, rho=0)
+# km assumes similar observation duration records for all strata
+# some drives (eg seagate 8TB) only have 30 days at best with Q2 2016 data.
+# this makes the right hand side of the usual full period KM plots misleading,
+# because there's no new information being added about some of the drives over time
+# so try only modelling the first week and so on
+# some interesting urban myths about early vs late failures?
+#
+cutps = c(2,7,15,30,60,90,120,360,720,1100)
+
+ncut = length(cutps)
+for (i in c(1:ncut))
+{
+    nmax = cutps[i]
+    titl = paste('KM first',nmax,'days of observation curves from Backblaze drive data to Q2 2016')
+    print(titl)
+    dt = dm
+    fixme = (dt$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
+    dt$status[fixme] = 0
+    dt$obsdays[fixme] = nmax
+    stm = with(dt,Surv(time=obsdays,event=status))
+    km.mod = npsurv(stm ~ model, data=dt)
+    kmmod = survdiff(stm ~ model, data=dt, rho=0)
+    pres = fixres(kmmod)
+    if (i==1) {
+      models = rownames(pres)
+      modcol = models[order(models)]
+      mdf = data.frame('model'=modcol)
+    }
+    rnk = pres[order(pres$groups),]$rank
+    mdf = cbind(mdf,rnk)
+    print(pres)
+    ofnpdf = paste('km_first',nmax,'_days_model_ST500LM012_HN_fixed_',rundate,'_rl.pdf',sep='')
+    ofnpng = paste('km_first',nmax,'_days_model_ST500LM012_HN_fixed_',rundate,'_rl.png',sep='')
+    print(ofnpdf)
+    print(ofnpng)
+    png(ofnpng,height=1000,width=1600)
+    print(ggsurv(km.mod,main = titl))
+    ## ggplot requires explicit printing inside loops
+    dev.off()
+    pdf(ofnpdf,height=10,width=20)
+    print(ggsurv(km.mod,main = titl))
+    dev.off()
+}
+colnames(mdf) = c('Model',paste('day',cutps,sep='_'))
+mdfs = mdf[,2:ncut+1]
+vmdf = apply(mdfs,1,var)
+mmdf = apply(mdfs,1,mean)
+mdf = cbind(mdf,'mean'=mmdf,'var'=vmdf)
+mdf = mdf[order(mdf$mean),]
+print(mdf)
+
+
 survdiff(s ~ manufact, data=ds, rho=0)
