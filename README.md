@@ -1,5 +1,11 @@
 # backblazeKM
 
+Updated June 2017
+
+New data added. Code updated. images stowed here.
+
+
+
 Started February 2016
 Ross Lazarus
 
