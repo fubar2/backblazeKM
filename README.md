@@ -1,6 +1,10 @@
 # backblazeKM
 
-Updated June 2017
+Updated June 10 2017: removed my ggsurv functions because
+GGally is now patched to include them
+
+
+Updated June 8 2017:
 
 New data added. Code updated. images stowed here.
 Now run a series of time restricted models to allow exploration of 
