@@ -9,6 +9,7 @@
 
 library(survival)
 library(rms)
+library(gdata)
 
 
 setwd('/data/drivefail')
@@ -441,7 +442,9 @@ for (i in c(1:ncut))
   okmodels = subset(dti,fixme,select=c(model))
   models = levels(factor(as.character(okmodels$model)))
   modcol = models[order(models)]
-  mdf = data.frame('model' = modcol)
+  if (i == 1) {
+    mdf = data.frame('model' = modcol)
+  }
   dti$status[fixme] = 0
   dti$obsdays[fixme] = nmax
   inmodels = (dti$model %in% models)
@@ -450,8 +453,8 @@ for (i in c(1:ncut))
   km.mod = npsurv(stm ~ model, data = dt)
   kmmod = survdiff(stm ~ model, data = dt, rho = 0)
   pres = fixres(kmmod)
-  rnk = pres[order(pres$groups), ]$rank
-  mdf = cbind(mdf, rnk)
+  rnk = data.frame(rank=pres[order(pres$groups), ]$rank)
+  mdf = cbindX(mdf, rnk)# cbind(mdf, rnk)
   s = paste('*** KM statistics for first',nmax,'days')
   print.noquote(s)
   print(pres)
@@ -475,11 +478,12 @@ for (i in c(1:ncut))
   print(ggsurv(km.mod, main = titl))
   dev.off()
 }
-colnames(mdf) = c('Model', paste('day', cutps, sep = '_'))
-mdfs = mdf[, 2:ncut + 1]
-vmdf = apply(mdfs, 1, var)
-mmdf = apply(mdfs, 1, mean)
-mdf = cbind(mdf, 'mean' = mmdf, 'var' = vmdf)
-mdf = mdf[order(mdf$mean), ]
-print(mdf)
+options(width=512)
+colnames(mdf) = c('Model', paste('Rank_day', cutps, sep = '_'))
+mdfs = mdf[, 2:ncut]
+vmdf = apply(mdfs, 1, var,na.rm=TRUE)
+mmdf = apply(mdfs, 1, mean,na.rm=TRUE)
+mdfo = cbind(mdf, 'mean' = mmdf, 'var' = vmdf)
+mdfo = mdfo[order(mdfo$mean), ]
+print(mdfo)
 
