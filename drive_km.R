@@ -1,3 +1,5 @@
+# updated june 2017 to generate km curves for restricted periods to make sense of
+# drives with short observation periods
 # for data from https://www.backblaze.com/hard-drive-test-data.html
 # ross lazarus me fecit february 18 2016
 # ggsurv modified from
@@ -418,7 +420,7 @@ ggsurv(km.mod, main = titl)
 dev.off()
 survdiff(sm ~ model, data = dm, rho = 0)
 survdiff(s ~ manufact, data = ds, rho = 0)
-# km assumes similar observation duration records for all strata		 +survdiff(sm ~ model, data=dm, rho=0)
+# km assumes similar observation duration records for all strata	
 # some drives (eg seagate 8TB) only have 30 days at best with Q2 2016 data.
 # this makes the right hand side of the usual full period KM plots misleading,
 # because there's no new information being added about some of the drives over time
@@ -433,8 +435,7 @@ for (i in c(1:ncut))
   nmax = cutps[i]
   titl = paste('KM first',
                nmax,
-               'days of observation curves from Backblaze drive data to Q2 2016')
-  print(titl)
+               'days of observation curves from Backblaze drive data to Q1 2017')
   dt = dm
   fixme = (dt$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
   dt$status[fixme] = 0
@@ -450,6 +451,8 @@ for (i in c(1:ncut))
   }
   rnk = pres[order(pres$groups), ]$rank
   mdf = cbind(mdf, rnk)
+  s = paste('*** KM statistics for first',nmax,'days')
+  print.noquote(s)
   print(pres)
   ofnpdf = paste('km_first',
                  nmax,
@@ -463,8 +466,6 @@ for (i in c(1:ncut))
                  rundate,
                  '_rl.png',
                  sep = '')
-  print(ofnpdf)
-  print(ofnpng)
   png(ofnpng, height = 1000, width = 1600)
   print(ggsurv(km.mod, main = titl))
   ## ggplot requires explicit printing inside loops
@@ -481,5 +482,3 @@ mdf = cbind(mdf, 'mean' = mmdf, 'var' = vmdf)
 mdf = mdf[order(mdf$mean), ]
 print(mdf)
 
-survdiff(s ~ manufact, data = ds, rho = 0)		  
-survdiff(s ~ manufact, data = ds, rho = 0)
