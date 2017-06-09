@@ -436,19 +436,20 @@ for (i in c(1:ncut))
   titl = paste('KM first',
                nmax,
                'days of observation curves from Backblaze drive data to Q1 2017')
-  dt = dm
-  fixme = (dt$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
-  dt$status[fixme] = 0
-  dt$obsdays[fixme] = nmax
+  dti = dm
+  fixme = (dti$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
+  okmodels = subset(dti,fixme,select=c(model))
+  models = levels(factor(as.character(okmodels$model)))
+  modcol = models[order(models)]
+  mdf = data.frame('model' = modcol)
+  dti$status[fixme] = 0
+  dti$obsdays[fixme] = nmax
+  inmodels = (dti$model %in% models)
+  dt = subset(dti, inmodels)
   stm = with(dt, Surv(time = obsdays, event = status))
   km.mod = npsurv(stm ~ model, data = dt)
   kmmod = survdiff(stm ~ model, data = dt, rho = 0)
   pres = fixres(kmmod)
-  if (i == 1) {
-    models = rownames(pres)
-    modcol = models[order(models)]
-    mdf = data.frame('model' = modcol)
-  }
   rnk = pres[order(pres$groups), ]$rank
   mdf = cbind(mdf, rnk)
   s = paste('*** KM statistics for first',nmax,'days')
