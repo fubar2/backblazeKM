@@ -19,7 +19,6 @@ setwd('/data/drivefail')
 
 fixres = function(modkm)
 {
-  setwd('/data/drivefail')
   ## reformat and reorder the km model results
   oediff = modkm$obs - modkm$exp
   oesign = sign(oediff)
@@ -39,12 +38,17 @@ fixres = function(modkm)
   return(sresd)
 }
 
-options(width=512)
+# changeme!!!
 fn = 'drivefail_resMay2017'
-f = paste(fn, 'xls', sep = '.')
-d = read.delim(f, sep = '\t', head = T)
+setwd('/data/drivefail') 
+options(width=512)
 rundate='June2017'
 titl = 'KM curves from Backblaze drive data to Q1 2017'
+# changeme!!!
+
+
+f = paste(fn, 'xls', sep = '.')
+d = read.delim(f, sep = '\t', head = T)
 tm = table(d$manufact)
 ds = subset(d, tm[d$manufact] > 200)
 s = with(ds, Surv(time = obsdays, event = status))
@@ -117,18 +121,13 @@ for (i in c(1:ncut))
   s = paste('*** KM statistics for first',nmax,'days')
   print.noquote(s)
   print(pres)
-  ofnpdf = paste('km_first',
+  ofnroot = paste('km_first',
                  nmax,
-                 '_days_model_June2017_',
+                 '_days_model_',
                  rundate,
-                 '_rl.pdf',
                  sep = '')
-  ofnpng = paste('km_first',
-                 nmax,
-                 '_days_model_June2017_',
-                 rundate,
-                 '_rl.png',
-                 sep = '')
+  ofnpdf = paste(ofnroot,'.pdf',sep = '')
+  ofnpng = paste(ofnroot,'.png',sep = '')
   png(ofnpng, height = 1000, width = 1600)
   print(ggsurv(km.mod, main = titl))
   ## ggplot requires explicit printing inside loops
