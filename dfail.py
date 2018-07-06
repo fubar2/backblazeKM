@@ -25,20 +25,36 @@ import os
 import sys
 import datetime
 import time
+runtag = 'july6'
+
+allowResurrection = True # controls treatment of drives that reappear unfailed after a fail record
+# if True pretends the fail was not seen, else first fail is taken as gospel. 
+# this is a data problem I need to talk to them about...
 
 started = time.time()
-dirs = os.listdir('.')
+dirs = ['2014',] # os.listdir('.')
 dirs.sort()
 dirs = [x for x in dirs if os.path.isdir(x)]
 print 'dfail.py processing',' '.join(dirs)
 ndone = 0
 testing = False
-outfn = 'drivefail_resMay2017.xls'
+outfn = 'drivefail_res%s.xls' % runtag
 if testing:
     outfn = 'drivefail_resMay2017_testing.xls'
 dfd = '/data/drivefail'
 os.chdir(dfd)
 tdict = {}
+res_models_counts= {}
+outfnrmc = 'drivefail_res_models_counts%s.xls' % runtag
+open(outfnrmc,'w')
+res_ids_counts = {}
+outfnric = 'drivefail_res_ids_counts%s.xls' % runtag
+open(outfnric,'w')
+res_ids_dates = {}
+outfnrid = 'drivefail_res_ids_dates%s.xls' % runtag
+open(outfnrid,'w')
+res_models_dates = {}
+
 for targ in dirs:
     print 'in',targ
     flist = os.listdir(targ)
@@ -51,7 +67,7 @@ for targ in dirs:
             tdr = tdr[:1000]
         td = [[x.strip().split(',')[y] for y in [0,1,2,3,4,20]] for x in tdr]
         for j,row in enumerate(td):
-            d,sn,mod,cap,fail,hours = row
+            d,sn,mod,cap,status,hours = row
             if len(mod.split(' ')) > 1: # eg "foo bar"
                 manu,model = mod.split()
                 if manu == 'ST500LM012' and model == 'HN':
@@ -63,17 +79,28 @@ for targ in dirs:
                 model = mod
             obst = datetime.datetime.strptime(d, "%Y-%m-%d")
             id = '%s%s%s' % (mod,idsep,sn)
-            tdict.setdefault(id,[obst,obst,'0',manu,'0']) # start,last,fail,manu,0 hours if new
-            rec = tdict.get(id)
+            tdict.setdefault(id,[obst,obst,'0',manu,'0']) # start,last,status,manu,0 hours if new
+            rec = tdict[id]
             if obst < rec[1]:
                print('Earlier date %s record %s at row %d: %s' % (obst,rec[1],j,row))
-            #if (rec[2] == '1'): # failed already!
-               # print('### Ignoring follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))            
-            if obst > rec[1]:
-               rec[1] = obst # update last obs
-            if (fail=='1'):
-               rec[2] = '1'
-            tdict[id] = rec # update dict
+            if (rec[2] == '1') or res_ids_counts.get(id,None): # failed already!
+               print('### Follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))          
+               res_models_counts.setdefault(mod,0) # trying to identify sources of apparently bogus failures
+               res_models_counts[mod] += 1 # one more
+               res_ids_counts.setdefault(id,0)
+               res_ids_counts[id] += 1
+               res_ids_dates.setdefault(id,[])
+               res_ids_dates[id].append(d)
+               if allowResurrection:
+                 rec[2] = status
+                 rec[1] = obst
+                 tdict[id] = rec
+            else:
+              if obst > rec[1]:
+                 rec[1] = obst # update last obs
+              if (status=='1'):
+                 rec[2] = '1'
+              tdict[id] = rec # update dict
         nrows = len(td)
         ndone += nrows
         if (((i) % 100) == 0):
@@ -97,6 +124,28 @@ for id in kees:
     outf.write(s)
     outf.write('\n')
 outf.close()
+outfnrmc.write('model\tpostfailrecs\n')
+rmck = res_models_counts.keys()
+s = ''.join(['%s\t%d\n' % (x,len(res_models_counts[x])) for x in rmck])
+outfnmrc.write(s)
+outfnmrc.write('\n')
+outfnrmc.close()
+
+outfnric.write('id\tpostfailrecs\n')
+ridk = res_ids_counts.keys()
+ridk.sort()
+s = ''.join(['%s\t%d\n' % (x,len(res_ids_counts[x])) for x in ridk])
+outfnric.write(s)
+outfnicc.write('\n')
+outfnric.close()
+
+outfnrid.write('id\tpostfaildates\n')
+ridk = res_ids_dates.keys()
+ridk.sort()
+s = ''.join(['%s\t%s\n' % (x,' '.join(res_ids_dates[x])) for x in ridk])
+outfnrid.write(s)
+outfnrid.write('\n')
+outfnrid.close()
 dur = time.time()-started
 print '# dfail.py finished - %d rows done at %f secs = %f rows/sec' % (ndone,dur,ndone/dur)
 
