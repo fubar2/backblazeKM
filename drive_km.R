@@ -39,11 +39,12 @@ fixres = function(modkm)
 }
 
 # changeme!!!
-fn = 'drivefail_resMay2017'
 setwd('/data/drivefail') 
 options(width=512)
-rundate='June2017'
-titl = 'KM curves from Backblaze drive data to Q1 2017'
+runtag = 'july6'
+fn = paste('drivefail_res',runtag,sep='')
+titl = 'KM plots - Backblaze drive data to end Q1 2018'
+subtitl = paste('Run on',runtag,sep=' ')
 # changeme!!!
 
 
@@ -91,7 +92,7 @@ survdiff(s ~ manufact, data = ds, rho = 0)
 # so try only modelling the first week and so on
 # some interesting urban myths about early vs late failures?
 #
-cutps = c(2, 7, 15, 30, 60, 90, 120, 360, 720, 1100)
+cutps = c(3, 7, 15, 30, 60, 90, 120, 360, 720, 1080, 1440, 1800)
 
 ncut = length(cutps)
 for (i in c(1:ncut))
@@ -124,7 +125,7 @@ for (i in c(1:ncut))
   ofnroot = paste('km_first',
                  nmax,
                  '_days_model_',
-                 rundate,
+                 runtag,
                  sep = '')
   ofnpdf = paste(ofnroot,'.pdf',sep = '')
   ofnpng = paste(ofnroot,'.png',sep = '')
