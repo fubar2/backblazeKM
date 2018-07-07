@@ -1,5 +1,10 @@
 """
  
+July 2018
+All sorts of odd data anomalies where a drive fails but subsequently reappears as not failed.
+Added code to allow this "resurrection" or not - for sensitivity analyses
+
+ 
 Feb 29 2016
 Ross added "fix" for ST500LM012 HN entries in 2014
 
@@ -25,16 +30,16 @@ import os
 import sys
 import datetime
 import time
-runtag = 'july6'
+runtag = 'july6_no_resurrection'
 
-allowResurrection = True # controls treatment of drives that reappear unfailed after a fail record
+allowResurrection = False # controls treatment of drives that reappear unfailed after a fail record
 # if True pretends the fail was not seen, else first fail is taken as gospel. 
 # this is a data problem I need to talk to them about...
 
 started = time.time()
-dirs = ['2014',] # os.listdir('.')
-dirs.sort()
-dirs = [x for x in dirs if os.path.isdir(x)]
+sdirs = sorted(os.listdir('.'))
+dirs = [x for x in sdirs if os.path.isdir(x)]
+#dirs = ['2018',] # testing
 print 'dfail.py processing',' '.join(dirs)
 ndone = 0
 testing = False
@@ -46,19 +51,18 @@ os.chdir(dfd)
 tdict = {}
 res_models_counts= {}
 outfnrmc = 'drivefail_res_models_counts%s.xls' % runtag
-open(outfnrmc,'w')
+rmco = open(outfnrmc,'w')
 res_ids_counts = {}
 outfnric = 'drivefail_res_ids_counts%s.xls' % runtag
-open(outfnric,'w')
+rico = open(outfnric,'w')
 res_ids_dates = {}
 outfnrid = 'drivefail_res_ids_dates%s.xls' % runtag
-open(outfnrid,'w')
+rido = open(outfnrid,'w')
 res_models_dates = {}
 
 for targ in dirs:
     print 'in',targ
-    flist = os.listdir(targ)
-    flist.sort()
+    flist = sorted(os.listdir(targ))
     flist = [os.path.join(targ,x) for x in flist if x.endswith('.csv')]
     idsep = '~~~'
     for i,fn in enumerate(flist):
@@ -69,7 +73,7 @@ for targ in dirs:
         for j,row in enumerate(td):
             d,sn,mod,cap,status,hours = row
             if len(mod.split(' ')) > 1: # eg "foo bar"
-                manu,model = mod.split()
+                manu,model = mod.split(' ',1)
                 if manu == 'ST500LM012' and model == 'HN':
                     # double bogus "ST500LM012 HN"
                     model = manu
@@ -84,7 +88,7 @@ for targ in dirs:
             if obst < rec[1]:
                print('Earlier date %s record %s at row %d: %s' % (obst,rec[1],j,row))
             if (rec[2] == '1') or res_ids_counts.get(id,None): # failed already!
-               print('### Follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))          
+               # print('### Follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))          
                res_models_counts.setdefault(mod,0) # trying to identify sources of apparently bogus failures
                res_models_counts[mod] += 1 # one more
                res_ids_counts.setdefault(id,0)
@@ -124,28 +128,28 @@ for id in kees:
     outf.write(s)
     outf.write('\n')
 outf.close()
-outfnrmc.write('model\tpostfailrecs\n')
+rmco.write('model\tpostfailrecs\n')
 rmck = res_models_counts.keys()
-s = ''.join(['%s\t%d\n' % (x,len(res_models_counts[x])) for x in rmck])
-outfnmrc.write(s)
-outfnmrc.write('\n')
-outfnrmc.close()
+s = ''.join(['%s\t%d\n' % (x,res_models_counts[x]) for x in rmck])
+rmco.write(s)
+rmco.write('\n')
+rmco.close()
 
-outfnric.write('id\tpostfailrecs\n')
+rico.write('id\tpostfailrecs\n')
 ridk = res_ids_counts.keys()
 ridk.sort()
-s = ''.join(['%s\t%d\n' % (x,len(res_ids_counts[x])) for x in ridk])
-outfnric.write(s)
-outfnicc.write('\n')
-outfnric.close()
+s = ''.join(['%s\t%d\n' % (x,res_ids_counts[x]) for x in ridk])
+rico.write(s)
+rico.write('\n')
+rico.close()
 
-outfnrid.write('id\tpostfaildates\n')
+rido.write('id\tpostfaildates\n')
 ridk = res_ids_dates.keys()
 ridk.sort()
 s = ''.join(['%s\t%s\n' % (x,' '.join(res_ids_dates[x])) for x in ridk])
-outfnrid.write(s)
-outfnrid.write('\n')
-outfnrid.close()
+rido.write(s)
+rido.write('\n')
+rido.close()
 dur = time.time()-started
 print '# dfail.py finished - %d rows done at %f secs = %f rows/sec' % (ndone,dur,ndone/dur)
 
