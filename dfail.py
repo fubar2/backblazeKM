@@ -3,7 +3,7 @@
 July 2018
 All sorts of odd data anomalies where a drive fails but subsequently reappears as not failed.
 Added code to allow this "resurrection" or not - for sensitivity analyses
-
+Added an output based on survival in SMART9 "hours" terms instead of date
  
 Feb 29 2016
 Ross added "fix" for ST500LM012 HN entries in 2014
@@ -81,9 +81,12 @@ for targ in dirs:
             else:
                 manu = mod[:2]
                 model = mod
+            if hours > 100000:
+              print '## > 10k hours at row',i,' = ',row
+            obshours = hours
             obst = datetime.datetime.strptime(d, "%Y-%m-%d")
             id = '%s%s%s' % (mod,idsep,sn)
-            tdict.setdefault(id,[obst,obst,'0',manu,'0']) # start,last,status,manu,0 hours if new
+            tdict.setdefault(id,[obst,obst,'0',manu,'0']) # start,last,status,manu,hours if new
             rec = tdict[id]
             if obst < rec[1]:
                print('Earlier date %s record %s at row %d: %s' % (obst,rec[1],j,row))
@@ -102,6 +105,7 @@ for targ in dirs:
             else:
               if obst > rec[1]:
                  rec[1] = obst # update last obs
+                 rec[4] = obshours
               if (status=='1'):
                  rec[2] = '1'
               tdict[id] = rec # update dict
@@ -112,7 +116,7 @@ for targ in dirs:
              print '# in directory %s with %d rows done at %f secs = %f rows/sec' % (targ,ndone,dur,ndone/dur)
 
 outf = open(outfn,'w')
-outf.write('manufact\tmodel\tserial\tobsdays\tstatus\n')
+outf.write('manufact\tmodel\tserial\tobsdays\tstatus\tsmarthours\n')
 kees = tdict.keys()
 kees.sort()
 for id in kees:
@@ -124,7 +128,8 @@ for id in kees:
     mod = idl[0]
     ser = idl[1]
     man = rec[3]
-    s = '\t'.join([man,mod,ser,obsd,status])
+    hours = rec[4]
+    s = '\t'.join([man,mod,ser,obsd,status,hours])
     outf.write(s)
     outf.write('\n')
 outf.close()

@@ -43,45 +43,49 @@ setwd('/data/drivefail')
 options(width=512)
 runtag = 'july6_no_resurrection'
 fn = paste('drivefail_res',runtag,sep='')
-titl = 'KM plots - Backblaze drive data to end Q1 2018'
+titl = 'KM plots - Backblaze drive data (hours) to end Q1 2018'
 subtitl = paste('Run on',runtag,sep=' ')
 # changeme!!!
-
+runtag = paste(runtag,'hours',sep='_')
 
 f = paste(fn, 'xls', sep = '.')
 d = read.delim(f, sep = '\t', head = T)
+sillyhours = (d$smart9hours > 100000)
+sh = paste(d$smart9hours[sillyhours],collapse=',')
+print(paste('found >100000 hour smart9 records = ',sh,sep=''))
+d$smart9hours[sillyhours] = 0 # 
 tm = table(d$manufact)
 ds = subset(d, tm[d$manufact] > 200)
-s = with(ds, Surv(time = obsdays, event = status))
+s = with(ds, Surv(time = smart9hours, event = status))
 km.manu = npsurv(s ~ manufact, data = ds)
-ofnpdf = paste(fn, '_manufacturer.pdf', sep = '')
-ofnpng = paste(fn, '_manufacturer.png', sep = '')
-ofnsvg = paste(fn, '_manufacturer.svg', sep = '')
+ofnpdf = paste(fn, '_hours_manufacturer.pdf', sep = '')
+ofnpng = paste(fn, '_hours_manufacturer.png', sep = '')
+ofnsvg = paste(fn, '_hours_manufacturer.svg', sep = '')
 svg(ofnsvg)
-ggsurv(km.manu, main = titl)
+ggsurv(km.manu, main = titl, CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 png(ofnpng, height = 1000, width = 1600)
-ggsurv(km.manu, main = titl)
+ggsurv(km.manu, main = titl, CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 pdf(ofnpdf, height = 10, width = 20)
-ggsurv(km.manu, main = titl)
+ggsurv(km.manu, main = titl,  CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 tmo = table(d$model)
 dm = subset(d, tmo[d$model] > 500)
 # dm = subset(dm,)
-sm = with(dm, Surv(time = obsdays, event = status))
+sm = with(dm, Surv(time = smart9hours, event = status))
 km.mod = npsurv(sm ~ model, data = dm)
-ofnpdf = paste(fn, '_model.pdf', sep = '')
-ofnpng = paste(fn, '_model.png', sep = '')
-ofnsvg = paste(fn, '_model.svg', sep = '')
+ofnpdf = paste(fn, '_hours_model.pdf', sep = '')
+ofnpng = paste(fn, '_hours_model.png', sep = '')
+ofnsvg = paste(fn, '_hours_model.svg', sep = '')
 svg(ofnsvg)
-ggsurv(km.mod, main = titl)
+ggsurv(km.mod, main = titl,  CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 png(ofnpng, height = 1000, width = 1600)
-ggsurv(km.mod, main = titl)
+ggsurv(km.mod, main = titl,  CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 pdf(ofnpdf, height = 10, width = 20)
-ggsurv(km.mod, main = titl)
+ggsurv(km.mod, main = titl,  CI = F, lty.ci = 2, size.ci = 0.1)
 dev.off()
 survdiff(sm ~ model, data = dm, rho = 0)
 survdiff(s ~ manufact, data = ds, rho = 0)
@@ -92,7 +96,7 @@ survdiff(s ~ manufact, data = ds, rho = 0)
 # so try only modelling the first week and so on
 # some interesting urban myths about early vs late failures?
 #
-cutps = c(3, 7, 15, 30, 60, 90, 120, 360, 720, 1080, 1440, 1800)
+cutps = c(72, 1440, 2880, 10000, 3000, 10000, 20000, 30000, 40000)
 
 ncut = length(cutps)
 for (i in c(1:ncut))
@@ -100,9 +104,9 @@ for (i in c(1:ncut))
   nmax = cutps[i]
   titl = paste('KM first',
                nmax,
-               'days of observation curves from Backblaze drive data to Q1 2017')
+               'hours of observation curves from Backblaze drive data to Q1 2018')
   dti = dm
-  fixme = (dti$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
+  fixme = (dti$smart9hours > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
   okmodels = subset(dti,fixme,select=c(model))
   models = levels(factor(as.character(okmodels$model)))
   modcol = models[order(models)]
@@ -110,21 +114,21 @@ for (i in c(1:ncut))
     mdf = data.frame('model' = modcol)
   }
   dti$status[fixme] = 0
-  dti$obsdays[fixme] = nmax
+  dti$smart9hours[fixme] = nmax
   inmodels = (dti$model %in% models)
   dt = subset(dti, inmodels)
-  stm = with(dt, Surv(time = obsdays, event = status))
+  stm = with(dt, Surv(time = smart9hours, event = status))
   km.mod = npsurv(stm ~ model, data = dt)
   kmmod = survdiff(stm ~ model, data = dt, rho = 0)
   pres = fixres(kmmod)
   rnk = data.frame(rank=pres[order(pres$groups), ]$rank)
   mdf = cbindX(mdf, rnk)# cbind(mdf, rnk)
-  s = paste('*** KM statistics for first',nmax,'days')
+  s = paste('*** KM statistics for first',nmax,'SNART hours')
   print.noquote(s)
   print(pres)
   ofnroot = paste('km_first',
                  nmax,
-                 '_days_model_',
+                 '_hours_model_',
                  runtag,
                  sep = '')
   ofnpdf = paste(ofnroot,'.pdf',sep = '')
@@ -134,11 +138,11 @@ for (i in c(1:ncut))
   ## ggplot requires explicit printing inside loops
   dev.off()
   pdf(ofnpdf, height = 10, width = 20)
-  print(ggsurv(km.mod, main = titl))
+  print(ggsurv(km.mod, main = titl,  CI = F, lty.ci = 2, size.ci = 0.1))
   dev.off()
 }
 
-colnames(mdf) = c('Model', paste('Rank_day', cutps, sep = '_'))
+colnames(mdf) = c('Model', paste('Rank_hour', cutps, sep = '_'))
 mdfs = mdf[, 2:ncut]
 vmdf = apply(mdfs, 1, var,na.rm=TRUE)
 mmdf = apply(mdfs, 1, mean,na.rm=TRUE)
