@@ -52,6 +52,9 @@ f = paste(fn, 'xls', sep = '.')
 d = read.delim(f, sep = '\t', head = T)
 tm = table(d$manufact)
 ds = subset(d, tm[d$manufact] > 200)
+#toobig = (ds$serial == 'MJ0351YNGA723A') 
+#ds$obsdays[toobig] = 1610 # most are censored around this time up to q1 2018 MJ0351YNGA723A
+# doesn't help - so many censored about the same time...
 s = with(ds, Surv(time = obsdays, event = status))
 km.manu = npsurv(s ~ manufact, data = ds)
 ofnpdf = paste(fn, '_manufacturer.pdf', sep = '')
@@ -67,7 +70,7 @@ pdf(ofnpdf, height = 10, width = 20)
 ggsurv(km.manu, main = titl)
 dev.off()
 tmo = table(d$model)
-dm = subset(d, tmo[d$model] > 500)
+dm = subset(d, tmo[d$model] > 200)
 # dm = subset(dm,)
 sm = with(dm, Surv(time = obsdays, event = status))
 km.mod = npsurv(sm ~ model, data = dm)
@@ -92,7 +95,22 @@ survdiff(s ~ manufact, data = ds, rho = 0)
 # so try only modelling the first week and so on
 # some interesting urban myths about early vs late failures?
 #
-cutps = c(3, 7, 15, 30, 60, 90, 120, 360, 720, 1080, 1440, 1800)
+# eeesh - big data = big data problems
+# one HDS5C3030ALA630 has a fail at 1801 days but most drives are censored at about 1600 days
+# makes plot misleading...
+#
+# smart9 hours also broken - 9269 of 14345 values exceed 10 years worth of days!!
+# as at end Q1 2018
+#> max(dm$obsdays)
+#[1] 1816
+#> max(dm$smart9hours,na.rm=T)
+#[1] 274169
+#> 1816*24 # total possible hours
+#[1] 43584
+# > sum(dt$smart9hours > 43600)
+#[1] 9296
+
+cutps = c(3, 7, 15, 30, 60, 90, 120, 360, 720, 1080, 1440, 1802)
 
 ncut = length(cutps)
 for (i in c(1:ncut))
@@ -103,14 +121,15 @@ for (i in c(1:ncut))
                'days of observation curves from Backblaze drive data to Q1 2017')
   dti = dm
   fixme = (dti$obsdays > nmax) # ignore all data, failing or not beyond nmax, by censoring at nmax.
+  dti$status[fixme] = 0
+  dti$obsdays[fixme] = nmax
   okmodels = subset(dti,fixme,select=c(model))
   models = levels(factor(as.character(okmodels$model)))
   modcol = models[order(models)]
   if (i == 1) {
     mdf = data.frame('model' = modcol)
   }
-  dti$status[fixme] = 0
-  dti$obsdays[fixme] = nmax
+  
   inmodels = (dti$model %in% models)
   dt = subset(dti, inmodels)
   stm = with(dt, Surv(time = obsdays, event = status))

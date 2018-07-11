@@ -1,5 +1,17 @@
 """
- 
+Grrrr - smart9hours is full of crap
+try the normalised value
+Fucking useless - see https://www.z-a-recovery.com/manual/smart.aspx:
+
+Drive lifetime information
+....
+Power on hours count 	Normalized values are computed similar to the above. Despite what the name suggests, the raw value of the 
+attribute is stored using all sorts of measurement units (hours, half-hours, or ten-minute intervals to name a few) depending 
+on the manufacturer of the device.
+
+
+
+
 July 2018
 All sorts of odd data anomalies where a drive fails but subsequently reappears as not failed.
 Added code to allow this "resurrection" or not - for sensitivity analyses
@@ -69,9 +81,9 @@ for targ in dirs:
         tdr = open(fn,'r',buffering=10000000).readlines()[1:] # drop header
         if testing:
             tdr = tdr[:1000]
-        td = [[x.strip().split(',')[y] for y in [0,1,2,3,4,20]] for x in tdr]
+        td = [[x.strip().split(',')[y] for y in [0,1,2,3,4,19,20]] for x in tdr]
         for j,row in enumerate(td):
-            d,sn,mod,cap,status,hours = row
+            d,sn,mod,cap,status,normhours,rawhours = row
             if len(mod.split(' ')) > 1: # eg "foo bar"
                 manu,model = mod.split(' ',1)
                 if manu == 'ST500LM012' and model == 'HN':
@@ -81,12 +93,12 @@ for targ in dirs:
             else:
                 manu = mod[:2]
                 model = mod
-            if hours > 100000:
-              print '## > 10k hours at row',i,' = ',row
-            obshours = hours
+            if rawhours > 50000:
+              print '## > 50k hours at row',i,' = ',row
+            obshours = normhours
             obst = datetime.datetime.strptime(d, "%Y-%m-%d")
             id = '%s%s%s' % (mod,idsep,sn)
-            tdict.setdefault(id,[obst,obst,'0',manu,'0']) # start,last,status,manu,hours if new
+            tdict.setdefault(id,[obst,obst,'0',manu,'0','0']) # start,last,status,manu,normhours,rawhours if new
             rec = tdict[id]
             if obst < rec[1]:
                print('Earlier date %s record %s at row %d: %s' % (obst,rec[1],j,row))
@@ -102,10 +114,13 @@ for targ in dirs:
                  rec[2] = status
                  rec[1] = obst
                  tdict[id] = rec
+                 rec[4] = rawhours
+                 rec[5] = normhours
             else:
-              if obst > rec[1]:
-                 rec[1] = obst # update last obs
-                 rec[4] = obshours
+              
+              rec[1] = obst # update last obs
+              rec[4] = rawhours
+              rec[5] = normhours
               if (status=='1'):
                  rec[2] = '1'
               tdict[id] = rec # update dict
