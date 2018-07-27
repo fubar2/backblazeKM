@@ -1,4 +1,8 @@
 # backblazeKM
+Updated July 27 2018
+Smart hours raw or normalised are so manufacturer/drive specific that I can't think they're much use.
+Lots of drives have a fail followed by up to thousands more records indicating still alive. Clearly a data 
+problem. Can't seem to get any help from the Backblaze folks.
 
 Updated June 10 2017: removed my ggsurv functions because
 GGally is now patched to include them
