@@ -50,13 +50,13 @@ runtag = paste(runtag,'hours',sep='_')
 
 f = paste(fn, 'xls', sep = '.')
 d = read.delim(f, sep = '\t', head = T)
-sillyhours = (d$smart9hours > 50000)
-sh = paste(d$smart9hours[sillyhours],collapse=',')
+sillyhours = (d$smarthours > 80000)
+sh = paste(d$smarthours[sillyhours],collapse=',')
 print(paste('found >100000 hour smart9 records = ',sh,sep=''))
-d$smart9hours[sillyhours] = 0 # 
+d$smarthours[sillyhours] = 80000 # 
 tm = table(d$manufact)
 ds = subset(d, tm[d$manufact] > 200)
-s = with(ds, Surv(time = smart9hours, event = status))
+s = with(ds, Surv(time = smarthours, event = status))
 km.manu = npsurv(s ~ manufact, data = ds)
 ofnpdf = paste(fn, '_hours_manufacturer.pdf', sep = '')
 ofnpng = paste(fn, '_hours_manufacturer.png', sep = '')
@@ -149,4 +149,13 @@ mmdf = apply(mdfs, 1, mean,na.rm=TRUE)
 mdfo = cbind(mdf, 'mean' = mmdf, 'var' = vmdf)
 mdfo = mdfo[order(mdfo$mean), ]
 print(mdfo)
+
+# some piccys of the awful smart data
+lm = d$manufact
+plot(d$obsdays,d$smarthours,col=unclass(lm)+1,cex=0.1)
+legend(1550,80000, legend=levels(lm),col=(1:length(levels(lm))),  pch=19, cex=0.6)
+lm = d$model
+plot(d$obsdays,d$smarthours,col=unclass(lm)+1,cex=0.1)
+legend(1550,80000, legend=levels(lm),col=(1:length(levels(lm))),  pch=19, cex=0.4)
+
 

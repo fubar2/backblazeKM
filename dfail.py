@@ -42,22 +42,21 @@ import os
 import sys
 import datetime
 import time
-runtag = 'july6_no_resurrection'
-
-allowResurrection = False # controls treatment of drives that reappear unfailed after a fail record
+runtag = 'Q2_2018_no_resurrection'
+testing = False
+allowResurrection = True # controls treatment of drives that reappear unfailed after a fail record
 # if True pretends the fail was not seen, else first fail is taken as gospel. 
 # this is a data problem I need to talk to them about...
 
 started = time.time()
 sdirs = sorted(os.listdir('.'))
 dirs = [x for x in sdirs if os.path.isdir(x)]
-#dirs = ['2018',] # testing
-print 'dfail.py processing',' '.join(dirs)
-ndone = 0
-testing = False
 outfn = 'drivefail_res%s.xls' % runtag
 if testing:
-    outfn = 'drivefail_resMay2017_testing.xls'
+    dirs = ['2018',] # testing
+    outfn = 'drivefail_resJul2018_testing.xls'
+print 'dfail.py processing',' '.join(dirs)
+ndone = 0
 dfd = '/data/drivefail'
 os.chdir(dfd)
 tdict = {}
@@ -93,9 +92,8 @@ for targ in dirs:
             else:
                 manu = mod[:2]
                 model = mod
-            if rawhours > 50000:
-              print '## > 50k hours at row',i,' = ',row
-            obshours = normhours
+            #if rawhours > 50000: 
+            #  print '## > 50k hours at row',i,' = ',row
             obst = datetime.datetime.strptime(d, "%Y-%m-%d")
             id = '%s%s%s' % (mod,idsep,sn)
             tdict.setdefault(id,[obst,obst,'0',manu,'0','0']) # start,last,status,manu,normhours,rawhours if new
@@ -131,7 +129,7 @@ for targ in dirs:
              print '# in directory %s with %d rows done at %f secs = %f rows/sec' % (targ,ndone,dur,ndone/dur)
 
 outf = open(outfn,'w')
-outf.write('manufact\tmodel\tserial\tobsdays\tstatus\tsmarthours\n')
+outf.write('manufact\tmodel\tserial\tobsdays\tstatus\tsmarthours\tnormhours\n')
 kees = tdict.keys()
 kees.sort()
 for id in kees:
@@ -144,7 +142,8 @@ for id in kees:
     ser = idl[1]
     man = rec[3]
     hours = rec[4]
-    s = '\t'.join([man,mod,ser,obsd,status,hours])
+    normhours = rec[5]
+    s = '\t'.join([man,mod,ser,obsd,status,hours,normhours])
     outf.write(s)
     outf.write('\n')
 outf.close()
