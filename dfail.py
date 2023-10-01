@@ -53,7 +53,7 @@ sdirs = sorted(os.listdir('.'))
 dirs = [x for x in sdirs if os.path.isdir(x)]
 outfn = 'drivefail_res%s.xls' % runtag
 if testing:
-    dirs = ['data_Q2_2023',] # testing
+    dirs = ['2023Q1_data',] # testing
     outfn = 'drivefail_resq2_23_testing.xls'
 print('dfail.py processing',' '.join(dirs))
 ndone = 0
@@ -85,6 +85,8 @@ for targ in dirs:
             d,sn,mod,cap,status,normhours,rawhours = row
             if len(mod.split(' ')) > 1: # eg "foo bar"
                 manu,model = mod.split(' ',1)
+                if manu == "ST1000LM024":
+                    manu = "ST"
                 if manu == 'ST500LM012' and model == 'HN':
                     # double bogus "ST500LM012 HN"
                     model = manu
@@ -111,18 +113,22 @@ for targ in dirs:
                  rec[1] = obst
                  rec[4] = rawhours
                  rec[5] = normhours
-                 tdict[id] = rec
+                if manu != "SS": # 2 records as at end q2 2022
+                    tdict[id] = rec
             else:
                 if obst < rec[0]:
                     print('Earlier start date %s record %s at row %d: %s' % (obst,rec[0],j,row))
                     rec[0] = obst
                 elif obst > rec[1]:
                     rec[1] = obst # extend obs
+                if rec[4] < rawhours:
                     rec[4] = rawhours
+                if rec[5] < normhours:
                     rec[5] = normhours
                 if (status=='1'):
                     rec[2] = '1'
-                tdict[id] = rec # update dict
+                if manu != "SS":
+                    tdict[id] = rec # update dict
         nrows = len(td)
         ndone += nrows
         if (((i) % 20) == 0):
