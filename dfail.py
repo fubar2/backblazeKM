@@ -5,8 +5,8 @@ Fucking useless - see https://www.z-a-recovery.com/manual/smart.aspx:
 
 Drive lifetime information
 ....
-Power on hours count 	Normalized values are computed similar to the above. Despite what the name suggests, the raw value of the 
-attribute is stored using all sorts of measurement units (hours, half-hours, or ten-minute intervals to name a few) depending 
+Power on hours count    Normalized values are computed similar to the above. Despite what the name suggests, the raw value of the
+attribute is stored using all sorts of measurement units (hours, half-hours, or ten-minute intervals to name a few) depending
 on the manufacturer of the device.
 
 
@@ -16,7 +16,7 @@ July 2018
 All sorts of odd data anomalies where a drive fails but subsequently reappears as not failed.
 Added code to allow this "resurrection" or not - for sensitivity analyses
 Added an output based on survival in SMART9 "hours" terms instead of date
- 
+
 Feb 29 2016
 Ross added "fix" for ST500LM012 HN entries in 2014
 
@@ -42,10 +42,10 @@ import os
 import sys
 import datetime
 import time
-runtag = 'Q2_2018_no_resurrection'
+runtag = 'Q2_2023_no_resurrection'
 testing = False
-allowResurrection = True # controls treatment of drives that reappear unfailed after a fail record
-# if True pretends the fail was not seen, else first fail is taken as gospel. 
+allowResurrection = False # controls treatment of drives that reappear unfailed after a fail record
+# if True pretends the fail was not seen, else first fail is taken as gospel.
 # this is a data problem I need to talk to them about...
 
 started = time.time()
@@ -53,12 +53,11 @@ sdirs = sorted(os.listdir('.'))
 dirs = [x for x in sdirs if os.path.isdir(x)]
 outfn = 'drivefail_res%s.xls' % runtag
 if testing:
-    dirs = ['2018',] # testing
-    outfn = 'drivefail_resJul2018_testing.xls'
-print 'dfail.py processing',' '.join(dirs)
+    dirs = ['data_Q2_2023',] # testing
+    outfn = 'drivefail_resq2_23_testing.xls'
+print('dfail.py processing',' '.join(dirs))
 ndone = 0
-dfd = '/data/drivefail'
-os.chdir(dfd)
+
 tdict = {}
 res_models_counts= {}
 outfnrmc = 'drivefail_res_models_counts%s.xls' % runtag
@@ -72,12 +71,13 @@ rido = open(outfnrid,'w')
 res_models_dates = {}
 
 for targ in dirs:
-    print 'in',targ
+    print( 'in',targ)
     flist = sorted(os.listdir(targ))
     flist = [os.path.join(targ,x) for x in flist if x.endswith('.csv')]
     idsep = '~~~'
     for i,fn in enumerate(flist):
-        tdr = open(fn,'r',buffering=10000000).readlines()[1:] # drop header
+        print('i', i, 'fn',fn)
+        tdr = open(fn,'r').readlines()[1:] # drop header
         if testing:
             tdr = tdr[:1000]
         td = [[x.strip().split(',')[y] for y in [0,1,2,3,4,19,20]] for x in tdr]
@@ -92,16 +92,14 @@ for targ in dirs:
             else:
                 manu = mod[:2]
                 model = mod
-            #if rawhours > 50000: 
+            #if rawhours > 50000:
             #  print '## > 50k hours at row',i,' = ',row
             obst = datetime.datetime.strptime(d, "%Y-%m-%d")
             id = '%s%s%s' % (mod,idsep,sn)
             tdict.setdefault(id,[obst,obst,'0',manu,'0','0']) # start,last,status,manu,normhours,rawhours if new
             rec = tdict[id]
-            if obst < rec[1]:
-               print('Earlier date %s record %s at row %d: %s' % (obst,rec[1],j,row))
             if (rec[2] == '1') or res_ids_counts.get(id,None): # failed already!
-               # print('### Follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))          
+               # print('### Follow up on a failed drive id %s failed %s at row %d: %s' % (id,rec[2],j,row))
                res_models_counts.setdefault(mod,0) # trying to identify sources of apparently bogus failures
                res_models_counts[mod] += 1 # one more
                res_ids_counts.setdefault(id,0)
@@ -111,28 +109,30 @@ for targ in dirs:
                if allowResurrection:
                  rec[2] = status
                  rec[1] = obst
-                 tdict[id] = rec
                  rec[4] = rawhours
                  rec[5] = normhours
+                 tdict[id] = rec
             else:
-              
-              rec[1] = obst # update last obs
-              rec[4] = rawhours
-              rec[5] = normhours
-              if (status=='1'):
-                 rec[2] = '1'
-              tdict[id] = rec # update dict
+                if obst < rec[0]:
+                    print('Earlier start date %s record %s at row %d: %s' % (obst,rec[0],j,row))
+                    rec[0] = obst
+                elif obst > rec[1]:
+                    rec[1] = obst # extend obs
+                    rec[4] = rawhours
+                    rec[5] = normhours
+                if (status=='1'):
+                    rec[2] = '1'
+                tdict[id] = rec # update dict
         nrows = len(td)
         ndone += nrows
-        if (((i) % 100) == 0):
+        if (((i) % 20) == 0):
              dur = time.time()-started
-             print '# in directory %s with %d rows done at %f secs = %f rows/sec' % (targ,ndone,dur,ndone/dur)
+             print('# in directory %s with %d rows done at %f secs = %f rows/sec' % (targ,ndone,dur,ndone/dur))
 
 outf = open(outfn,'w')
 outf.write('manufact\tmodel\tserial\tobsdays\tstatus\tsmarthours\tnormhours\n')
-kees = tdict.keys()
-kees.sort()
-for id in kees:
+kees = list(tdict.keys())
+for id in sorted(kees):
     rec = tdict[id]
     status = rec[2]
     gap = rec[1] - rec[0]
@@ -155,20 +155,18 @@ rmco.write('\n')
 rmco.close()
 
 rico.write('id\tpostfailrecs\n')
-ridk = res_ids_counts.keys()
-ridk.sort()
-s = ''.join(['%s\t%d\n' % (x,res_ids_counts[x]) for x in ridk])
+ridk = list(res_ids_counts.keys())
+s = ''.join(['%s\t%d\n' % (x,res_ids_counts[x]) for x in sorted(ridk)])
 rico.write(s)
 rico.write('\n')
 rico.close()
 
 rido.write('id\tpostfaildates\n')
-ridk = res_ids_dates.keys()
-ridk.sort()
+ridk = sorted(list(res_ids_dates.keys()))
 s = ''.join(['%s\t%s\n' % (x,' '.join(res_ids_dates[x])) for x in ridk])
 rido.write(s)
 rido.write('\n')
 rido.close()
 dur = time.time()-started
-print '# dfail.py finished - %d rows done at %f secs = %f rows/sec' % (ndone,dur,ndone/dur)
+print('# dfail.py finished - %d rows done at %f secs = %f rows/sec' % (ndone,dur,ndone/dur))
 
