@@ -29,10 +29,9 @@ cph = lifelines.CoxPHFitter()
 
 
 
-def groupedKM(df, groupcol, title, args):
+def groupedKM(df, groupcol, title, args, logtables=False):
     """ One - eg models by manu
     """
-    print('##groupedKM groupcol=', groupcol, 'title', title)
     fig, ax = plt.subplots()
     plt.gcf().set_size_inches(12, 10)
     if groupcol:
@@ -41,18 +40,19 @@ def groupedKM(df, groupcol, title, args):
         events = []
         groups = []
         for name, grouped_df in df.groupby(groupcol):
-            T = grouped_df[args.time]
-            E = grouped_df[args.status]
-            G = grouped_df[groupcol]
-            gfit = kmf.fit(T, E, label=name)
-            kmf.plot_survival_function(ax=ax)
-            names.append(str(name))
-            times.append(T)
-            events.append(E)
-            groups.append(G)
+            if len(grouped_df) > args.minobsgroup:
+                T = grouped_df[args.time]
+                E = grouped_df[args.status]
+                G = grouped_df[groupcol]
+                gfit = kmf.fit(T, E, label=name)
+                kmf.plot_survival_function(ax=ax)
+                names.append(str(name))
+                times.append(T)
+                events.append(E)
+                groups.append(G)
         ax.set_title(args.title)
-        plt.legend(loc=3, ncol=6, prop={'size': 10})
-        fig.savefig(os.path.join(args.image_dir,'KM_%s_%s_%s.%s' % (args.title, groupcol, name, args.image_type)), dpi=300)
+        plt.legend(loc=3, ncol=4, prop={'size': 9})
+        fig.savefig(os.path.join(args.image_dir,'KM_%s.%s' % (title, args.image_type)), dpi=300)
         ngroup = len(names)
         if  ngroup == 2: # run logrank test if 2 groups
             results = lifelines.statistics.logrank_test(times[0], times[1], events[0], events[1], alpha=.99)
@@ -71,18 +71,19 @@ def groupedKM(df, groupcol, title, args):
         print('#### No grouping variable, so no log rank or other Kaplan-Meier statistical output is available')
     survdf = lifelines.utils.survival_table_from_events(df[args.time], df[args.status])
     lifedf = lifelines.utils.survival_table_from_events(df[args.time], df[args.status], collapse=True)
-    print("#### Survival table using time %s and event %s" % (args.time, args.status))
-    with pd.option_context('display.max_rows', None,
-                           'display.max_columns', None,
-                           'display.precision', 3,
-                           ):
-        print(survdf)
-    print("#### Life table using time %s and event %s" % (args.time, args.status))
-    with pd.option_context('display.max_rows', None,
-                           'display.max_columns', None,
-                           'display.precision', 3,
-                           ):
-        print(lifedf)
+    if logtables:
+        print("#### Survival table grouped by %s using time %s and event %s" % (groupcol, args.time, args.status))
+        with pd.option_context('display.max_rows', None,
+                               'display.max_columns', None,
+                               'display.precision', 3,
+                               ):
+            print(survdf)
+        print("#### Life table grouped by %s using time %s and event %s" % (groupcol, args.time, args.status))
+        with pd.option_context('display.max_rows', None,
+                               'display.max_columns', None,
+                               'display.precision', 3,
+                               ):
+            print(lifedf)
     titl = args.title.replace(' ','_')
     outpath = os.path.join(args.image_dir,'%s_%s_survival_table.tabular' % (titl, groupcol))
     survdf.to_csv(outpath, sep='\t')
@@ -103,8 +104,10 @@ a('--title', default='Default plot title')
 a('--image_type', default='pdf')
 a('--image_dir', default='images')
 a('--readme', default='run_log.txt')
+a('--minobsgroup', default=100)
+
 args = parser.parse_args()
-#sys.stdout = open(args.readme, 'w')
+sys.stdout = open(args.readme, 'w')
 df = pd.read_csv(args.input_tab, sep='\t')
 NCOLS = df.columns.size
 NROWS = len(df.index)
